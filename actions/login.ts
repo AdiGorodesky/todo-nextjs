@@ -4,7 +4,7 @@ import * as z from "zod";
 import { LoginSchema } from "../schemas";
 import axios from "axios";
 
-const URL = "http://localhost:3000";
+const URL = process.env.APP_URL;
 
 export const login = async (values: z.infer<typeof LoginSchema>) => {
   const validatedFields = LoginSchema.safeParse(values);
