@@ -5,7 +5,7 @@ import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import CardWrapper from "./CardWrapper";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { LoginSchema } from "../../../schemas";
+import { LoginSchema } from "../../schemas";
 import { Input } from "../ui/input";
 import {
   Form,
@@ -19,12 +19,13 @@ import { resolve } from "path";
 import { Button } from "../ui/button";
 import FormError from "../FormError";
 import FormSuccess from "../FormSuccess";
-import { login } from "../../../actions/login";
+import { login } from "../../actions/login";
 
 const LoginForm = () => {
   const [error, setError] = useState<string | undefined>("");
   const [success, setSuccess] = useState<string | undefined>("");
   const [isPending, startTransition] = useTransition();
+
   const form = useForm<z.infer<typeof LoginSchema>>({
     resolver: zodResolver(LoginSchema),
     defaultValues: {
@@ -38,8 +39,8 @@ const LoginForm = () => {
     setSuccess("");
     startTransition(() => {
       login(values).then((data) => {
-        setError(data.error);
-        setSuccess(data.success);
+        setError(data?.error);
+        // setSuccess(data?.success);
       });
     });
   };

@@ -2,68 +2,175 @@
 
 import { useState } from "react";
 import { Todo } from "../../types/Todo";
-import AddOrEditTodo from "./AddOrEditTodo";
-import TodoItem from "./TodoItem";
+import {
+  useReactTable,
+  getCoreRowModel,
+  createColumnHelper,
+  flexRender,
+  getFilteredRowModel,
+  ColumnFiltersState,
+} from "@tanstack/react-table";
+import EditableCell from "./EditableCell";
+import Filter from "./Filter";
+import AddTodo from "./AddTodo";
 
 type Props = {
-  todos: Todo[];
-  toggleTodo: (id: string) => void;
-  setTodos: (value: Todo[]) => void;
-  removeTodo: (todoId: string) => void;
+  data: Todo[];
 };
 
-const TodoList = ({ todos, toggleTodo, setTodos, removeTodo }: Props) => {
-  const [changedTodo, setChangedTodo] = useState<Todo | null>(null);
+const TodoList = ({ data }: Props) => {
+  const [todos, setTodos] = useState<Todo[]>(data);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([
+    { id: "txt", value: "" },
+  ]);
 
-  const handleAddTodo = (txt: string) => {
+  const columnHelper = createColumnHelper<Todo>();
+  const columns = [
+    columnHelper.accessor("isDone", {
+      cell: (props) => (
+        <input
+          type="checkbox"
+          checked={props.row.original.isDone}
+          onChange={() => toggleTodo(props.row.original._id)}
+        />
+      ),
+      header: "",
+      size: 50,
+    }),
+    columnHelper.accessor("txt", {
+      cell: (props) => (
+        <EditableCell
+          getValue={props.getValue}
+          isDone={props.row.original.isDone}
+        />
+      ),
+      header: "Task",
+      size: 230,
+      filterFn: "includesString",
+    }),
+    columnHelper.accessor("description", {
+      cell: (props) => (
+        <EditableCell
+          getValue={props.getValue}
+          isDone={props.row.original.isDone}
+        />
+      ),
+      header: "Description",
+      size: 350,
+    }),
+  ];
+
+  const table = useReactTable({
+    columns,
+    data: todos,
+    getCoreRowModel: getCoreRowModel(),
+    columnResizeMode: "onChange",
+    getFilteredRowModel: getFilteredRowModel(),
+    state: { columnFilters },
+    onColumnFiltersChange: setColumnFilters,
+  });
+
+  const toggleTodo = (id: string) => {
+    const todo = todos.find((todo) => todo._id === id);
+    if (todo) {
+      todo.isDone = !todo.isDone;
+      setTodos((prev) =>
+        prev.map((currTodo) => (currTodo._id === id ? todo : currTodo))
+      );
+    }
+  };
+
+  const handleAddTodo = (txt: string, description?: string) => {
     const newTodo: Todo = {
       _id: Math.floor(Math.random() * 100).toString(),
       isDone: false,
       txt,
+      description,
     };
 
     setTodos([...todos, newTodo]);
-    setChangedTodo(null);
   };
 
-  const handleChangedTodo = (changedTodo: Todo) => {
-    const changedTodos = todos.map((todo) =>
-      todo._id === changedTodo._id ? { ...todo, ...changedTodo } : todo
-    );
-    setTodos(changedTodos);
-  };
-
-  const handleAddOrEdit = (todo: Todo | string) => {
-    if (typeof todo === "string") {
-      handleAddTodo(todo);
-    } else {
-      handleChangedTodo(todo);
-    }
-  };
-
-  const handleEdit = (todoId: string) => {
-    const selectedTodo = todos.find((todo) => todo._id === todoId) || null;
-    setChangedTodo(selectedTodo);
+  const removeTodo = (todoId: string) => {
+    const updatedTodos = todos.filter((todo) => todo._id !== todoId);
+    setTodos(updatedTodos);
   };
 
   return (
-    <div className="w-full max-w-xl mx-auto">
-      <AddOrEditTodo
-        handleAddOrEdit={handleAddOrEdit}
-        changedTodo={changedTodo}
-      />
-      <div className="mt-8">
-        {todos?.map((todo) => (
-          <TodoItem
-            key={todo._id}
-            toggleTodo={toggleTodo}
-            todo={todo}
-            removeTodo={removeTodo}
-            handleEdit={handleEdit}
-          />
-        ))}
+    <>
+      <div className="p-5 overflow-x-auto">
+        <AddTodo handleAddTodo={handleAddTodo} />
+        <Filter
+          value={String(
+            columnFilters.find((filter) => filter.id === "txt")?.value || ""
+          )}
+          onChange={(value) =>
+            setColumnFilters((prev) =>
+              prev.map((filter) =>
+                filter.id === "txt" ? { ...filter, value } : filter
+              )
+            )
+          }
+        />
+        <table className="min-w-full bg-white border-collapse border border-gray-300">
+          <thead className="bg-gray-200">
+            {table.getHeaderGroups().map((headerGroup) => {
+              return (
+                <tr key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <th
+                      key={header.id}
+                      colSpan={header.colSpan}
+                      className="p-3 border-b border-gray-300 text-sm font-medium text-gray-600 uppercase relative"
+                      style={{ width: header.getSize() }}
+                    >
+                      <div className="flex items-center justify-between">
+                        {flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                        <div
+                          onMouseDown={header.getResizeHandler()}
+                          onTouchStart={header.getResizeHandler()}
+                          className="w-2 h-full bg-gray-300 cursor-col-resize absolute top-0 right-0"
+                        ></div>
+                      </div>
+                    </th>
+                  ))}
+                </tr>
+              );
+            })}
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {table.getRowModel().rows.map((row) => (
+              <tr key={row.id}>
+                {row.getVisibleCells().map((cell) => {
+                  return (
+                    <td
+                      key={cell.id}
+                      className="p-3 whitespace-no-wrap text-sm text-gray-800"
+                    >
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </td>
+                  );
+                })}
+                <td className="p-3 whitespace-no-wrap text-sm text-gray-800">
+                  <button
+                    onClick={() => removeTodo(row.original._id)}
+                    className="text-red-600 hover:text-red-800"
+                  >
+                    Remove
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
-    </div>
+    </>
   );
 };
 

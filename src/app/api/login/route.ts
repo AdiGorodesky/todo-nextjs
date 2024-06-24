@@ -1,14 +1,15 @@
-import connectMongo from "@/lib/db";
-import UserModel from "@/models/User";
 import { NextResponse } from "next/server";
+import { getUserByEmail } from "../../../data/User";
 
 export async function POST(req: Request) {
   try {
-    await connectMongo();
     const { email, password } = await req.json();
     console.log({ email, password });
-    const user = await UserModel.findOne({ email });
-    return NextResponse.json({ message: "success" });
+    const user = await getUserByEmail(email);
+    if (user) {
+      return NextResponse.json({ message: "success" });
+    }
+    return NextResponse.json({ error: "User not found" });
   } catch (error) {
     console.error("Error fetching user:", error);
     return NextResponse.json(

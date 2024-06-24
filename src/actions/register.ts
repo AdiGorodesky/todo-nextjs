@@ -2,6 +2,9 @@
 
 import * as z from "zod";
 import { RegisterSchema } from "../schemas";
+import axios from "axios";
+
+const URL = process.env.APP_URL;
 
 export const register = async (values: z.infer<typeof RegisterSchema>) => {
   const validatedFields = RegisterSchema.safeParse(values);
@@ -10,5 +13,10 @@ export const register = async (values: z.infer<typeof RegisterSchema>) => {
     return { error: "Invalid Fields" };
   }
 
-  return { success: "Email sent" };
+  const res = await axios.post(`${URL}/api/register`, validatedFields.data);
+  if (res.data.error) {
+    return { error: "User already exist" };
+  }
+
+  return { success: "User created" };
 };
